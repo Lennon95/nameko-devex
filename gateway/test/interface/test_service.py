@@ -318,3 +318,94 @@ class TestCreateOrder(object):
         assert response.status_code == 404
         assert response.json()['error'] == 'PRODUCT_NOT_FOUND'
         assert response.json()['message'] == 'Product Id unknown'
+
+
+class TestListOrders(object):
+
+    def test_can_list_orders(self, gateway_service, web_session):
+        # setup mock orders-service response:
+        gateway_service.orders_rpc.list_orders.return_value = [
+            {
+                'id': 1,
+                'order_details': [
+                    {
+                        'id': 1,
+                        'quantity': 2,
+                        'product_id': 'the_odyssey',
+                        'price': '200.00'
+                    },
+                    {
+                        'id': 2,
+                        'quantity': 1,
+                        'product_id': 'the_enigma',
+                        'price': '400.00'
+                    }
+                ]
+            },
+            {
+                'id': 2,
+                'order_details': [
+                    {
+                        'id': 2,
+                        'quantity': 3,
+                        'product_id': 'the_enigma',
+                        'price': '400.00'
+                    }
+                ]
+            }
+        ]
+
+        # call the gateway service to get order #1
+        response = web_session.get('/orders/all')
+        assert response.status_code == 200
+
+        expected_response = {
+            "count": 2,
+            "data": [
+                {
+                    'id': 1,
+                    'order_details': [
+                        {
+                            'id': 1,
+                            'quantity': 2,
+                            'product_id': 'the_odyssey',
+                            'price': '200.00'
+                        },
+                        {
+                            'id': 2,
+                            'quantity': 1,
+                            'product_id': 'the_enigma',
+                            'price': '400.00'
+                        }
+                    ]
+                },
+                {
+                    'id': 2,
+                    'order_details': [
+                        {
+                            'id': 2,
+                            'quantity': 3,
+                            'product_id': 'the_enigma',
+                            'price': '400.00'
+                        }
+                    ]
+                }
+            ]
+        }
+        assert expected_response == response.json()
+
+        # check dependencies called as expected
+        assert [call()] == gateway_service.orders_rpc.list_orders.call_args_list
+
+    def test_empty_list(self, gateway_service, web_session):
+        gateway_service.orders_rpc.list_orders.return_value = []
+
+        # call the gateway service to get order #1
+        response = web_session.get('/orders/all')
+        assert response.status_code == 200
+        payload = response.json()
+        expected_response = {
+            "count": 0,
+            "data": []
+        }
+        assert expected_response == payload

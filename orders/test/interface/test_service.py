@@ -41,6 +41,28 @@ def test_will_raise_when_order_not_found(orders_rpc):
     assert err.value.value == 'Order with id 1 not found'
 
 
+def test_list_orders(orders_rpc, order, db_session):
+    order1 = Order()
+    order2 = Order()
+
+    # Reset table, adds orders
+    db_session.query(Order).delete()
+    db_session.add(order1)
+    db_session.add(order2)
+    db_session.commit()
+
+    response = orders_rpc.list_orders()
+    assert len(response) == 2
+    assert response[0]['id'] == order1.id
+    assert response[1]['id'] == order2.id
+
+
+def test_list_orders_when_empty(orders_rpc, order, db_session):
+    db_session.query(Order).delete()
+    db_session.commit()
+    response = orders_rpc.list_orders()
+    assert len(response) == 0
+
 @pytest.mark.usefixtures('db_session')
 def test_can_create_order(orders_service, orders_rpc):
     order_details = [

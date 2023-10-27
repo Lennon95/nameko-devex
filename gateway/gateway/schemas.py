@@ -1,4 +1,4 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, post_dump
 
 
 class CreateOrderDetailSchema(Schema):
@@ -22,7 +22,6 @@ class ProductSchema(Schema):
 
 
 class GetOrderSchema(Schema):
-
     class OrderDetail(Schema):
         id = fields.Int()
         quantity = fields.Int()
@@ -33,3 +32,9 @@ class GetOrderSchema(Schema):
 
     id = fields.Int()
     order_details = fields.Nested(OrderDetail, many=True)
+
+    @post_dump(pass_many=True)
+    def wrap_with_count(self, data, many, **kwargs):
+        if many:
+            return {"count": len(data), "data": data}
+        return data

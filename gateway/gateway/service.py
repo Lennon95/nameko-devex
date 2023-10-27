@@ -121,6 +121,16 @@ class GatewayService(object):
 
         return order
 
+    @http("GET", "/orders/all")
+    def list_orders(self, request):
+        """Gets all orders.
+        """
+        orders = self.orders_rpc.list_orders()
+        return Response(
+            GetOrderSchema(many=True).dumps(orders).data,
+            mimetype='application/json'
+        )
+
     @http(
         "POST", "/orders",
         expected_exceptions=(ValidationError, ProductNotFound, BadRequest)
