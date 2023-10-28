@@ -41,6 +41,15 @@ def test_delete(storage, products):
     assert 'Product ID LZ129 does not exist' == exc.value.args[0]
 
 
+def test_exists_true(storage, product):
+    storage.create(product)
+    assert storage.exists(product['id'])
+
+
+def test_exists_false(storage):
+    assert not storage.exists('unknown')
+
+
 def test_list(storage, products):
     listed_products = storage.list()
     assert (

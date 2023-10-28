@@ -105,9 +105,6 @@ class GatewayService(object):
         # raise``OrderNotFound``
         order = self.orders_rpc.get_order(order_id)
 
-        # Retrieve all products from the products service
-        product_map = {prod['id']: prod for prod in self.products_rpc.list()}
-
         # get the configured image root
         image_root = config['PRODUCT_IMAGE_ROOT']
 
@@ -115,7 +112,8 @@ class GatewayService(object):
         for item in order['order_details']:
             product_id = item['product_id']
 
-            item['product'] = product_map[product_id]
+            # Fetch product from storage
+            item['product'] = self.products_rpc.get(product_id)
             # Construct an image url.
             item['image'] = '{}/{}.jpg'.format(image_root, product_id)
 
@@ -179,9 +177,8 @@ class GatewayService(object):
 
     def _create_order(self, order_data):
         # check order product ids are valid
-        valid_product_ids = {prod['id'] for prod in self.products_rpc.list()}
         for item in order_data['order_details']:
-            if item['product_id'] not in valid_product_ids:
+            if not self.products_rpc.exists(item['product_id']):
                 raise ProductNotFound(
                     "Product Id {}".format(item['product_id'])
                 )

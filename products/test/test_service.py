@@ -51,6 +51,24 @@ def test_delete_product_fails_on_not_found(service_container):
             get(111)
 
 
+def test_product_exists_true(create_product, service_container):
+
+    stored_product = create_product()
+
+    with entrypoint_hook(service_container, 'exists') as exists:
+        exist_flag = exists(stored_product['id'])
+
+    assert exist_flag
+
+
+def test_product_exists_false(create_product, service_container):
+
+    with entrypoint_hook(service_container, 'exists') as exists:
+        exist_flag = exists('unknown')
+
+    assert not exist_flag
+
+
 def test_list_products(products, service_container):
 
     with entrypoint_hook(service_container, 'list') as list_:
