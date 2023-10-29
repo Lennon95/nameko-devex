@@ -9,6 +9,10 @@ execution:
   ramp-up: 1m
   hold-for: 12h
   scenario: nex
+#- concurrency: 1
+#  ramp-up: 1m
+#  hold-for: 12h
+#  scenario: del
       
 scenarios:
   nex:
@@ -108,7 +112,19 @@ scenarios:
     - if: '"${order_id}" == "NOT_FOUND"'
       then:
         - action: continue
-  
+
+    # 5. Delete product
+    - url: /products/${product_id}
+      label: product-delete
+      think-time: uniform(0s, 0s)
+      method: DELETE
+
+      assert:
+      - contains:
+        - 200
+        subject: http-code
+        not: false
+
 reporting:
 - module: final-stats
   dump-xml: stats.xml
