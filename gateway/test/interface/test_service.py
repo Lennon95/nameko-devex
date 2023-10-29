@@ -366,7 +366,7 @@ class TestListOrders(object):
         assert expected_response == response.json()
 
         # check dependencies called as expected
-        assert [call()] == gateway_service.orders_rpc.list_orders.call_args_list
+        assert [call(1)] == gateway_service.orders_rpc.list_orders.call_args_list
 
     def test_empty_list(self, gateway_service, web_session):
         gateway_service.orders_rpc.list_orders.return_value = []

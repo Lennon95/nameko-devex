@@ -123,7 +123,10 @@ class GatewayService(object):
     def list_orders(self, request):
         """Gets all orders.
         """
-        orders = self.orders_rpc.list_orders()
+
+        args = request.args.to_dict()
+        page = args['p'] if 'p' in args else 1
+        orders = self.orders_rpc.list_orders(page)
         return Response(
             GetOrderSchema(many=True).dumps(orders).data,
             mimetype='application/json'
