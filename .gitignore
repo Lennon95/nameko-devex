@@ -9,3 +9,5 @@ htmlcov
 .DS_Store
 **/*.log
 stats.xml
+**/**init.py
+.idea/
