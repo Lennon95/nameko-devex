@@ -31,6 +31,11 @@ class ProductsService:
         self.storage.create(product)
 
     @rpc
+    def update(self, product_id, product):
+        product = schemas.UpdateProduct(strict=True).load(product).data
+        self.storage.update(product_id, product)
+
+    @rpc
     def delete(self, product_id):
         self.storage.delete(product_id)
 

@@ -77,7 +77,7 @@ class TestCreateProduct(object):
                 "title": "The Odyssey"
             })
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert response.json() == {'id': 'the_odyssey'}
         assert gateway_service.products_rpc.create.call_args_list == [call({
                 "in_stock": 10,
@@ -230,7 +230,7 @@ class TestCreateOrder(object):
                 ]
             })
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         assert response.json() == {'id': 11}
         assert gateway_service.products_rpc.exists.call_args_list == [call('the_odyssey')]
         assert gateway_service.orders_rpc.create_order.call_args_list == [
@@ -366,7 +366,7 @@ class TestListOrders(object):
         assert expected_response == response.json()
 
         # check dependencies called as expected
-        assert [call(1)] == gateway_service.orders_rpc.list_orders.call_args_list
+        assert [call(1, 10)] == gateway_service.orders_rpc.list_orders.call_args_list
 
     def test_empty_list(self, gateway_service, web_session):
         gateway_service.orders_rpc.list_orders.return_value = []

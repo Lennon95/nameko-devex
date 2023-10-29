@@ -23,12 +23,11 @@ class OrdersService:
         return OrderSchema().dump(order).data
 
     @rpc
-    def list_orders(self, page):
-        # Page 1 is offset 0, page 2 offset 10, etc..
-        offset = (page - 1) * 10
-        ITEMS_PER_PAGE = 10
+    def list_orders(self, page, items_per_page=10):
+        # For 10 items/page, page 1 is offset 0, page 2 offset 10, etc..
+        offset = (page - 1) * items_per_page
 
-        orders = self.db.query(Order).offset(offset).limit(ITEMS_PER_PAGE)
+        orders = self.db.query(Order).offset(offset).limit(items_per_page)
         return OrderSchema(many=True).dump(orders).data
 
     @rpc

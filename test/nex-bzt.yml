@@ -42,7 +42,7 @@ scenarios:
         }          
       assert:
       - contains:
-        - 200
+        - 201
         subject: http-code
         not: false
       extract-jsonpath:
@@ -83,7 +83,7 @@ scenarios:
         }
       assert:
       - contains:
-        - 200
+        - 201
         subject: http-code
         not: false
       extract-jsonpath:
@@ -125,7 +125,26 @@ scenarios:
         subject: http-code
         not: false
 
-    # 6. Delete product
+    # 6. Update Product
+    - url: /products/${product_id}
+      label: products-update
+      think-time: uniform(0s, 0s)
+      method: PATCH
+      headers:
+        cache-control: no-cache
+        Content-Type: application/json
+      body: 'request-body-string'
+      body: >
+        {
+          "title": "Some new title"
+        }
+      assert:
+      - contains:
+        - 200
+        subject: http-code
+        not: false
+
+    # 7. Delete product
     - url: /products/${product_id}
       label: product-delete
       think-time: uniform(0s, 0s)
