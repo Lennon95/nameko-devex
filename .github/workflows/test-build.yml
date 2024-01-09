@@ -8,15 +8,15 @@ jobs:
     name: Smoke-test
     runs-on: "ubuntu-latest"
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+ 
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: nameko-devex
           environment-file: environment_dev.yml
           python-version: 3.7
           auto-update-conda: true
-
-      - name: Checkout repo
-        uses: actions/checkout@v3 
 
       - name: Run backing services
         run: ./dev_run_backingsvcs.sh
