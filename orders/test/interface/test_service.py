@@ -41,6 +41,55 @@ def test_will_raise_when_order_not_found(orders_rpc):
     assert err.value.value == 'Order with id 1 not found'
 
 
+def test_list_orders_one_page(orders_rpc, db_session):
+    order1 = Order()
+    order2 = Order()
+
+    # Reset table, adds orders
+    db_session.query(Order).delete()
+    db_session.add(order1)
+    db_session.add(order2)
+    db_session.commit()
+
+    response = orders_rpc.list_orders(1)
+    assert len(response) == 2
+    assert response[0]['id'] == order1.id
+    assert response[1]['id'] == order2.id
+
+
+def test_list_orders_two_pages(orders_rpc, db_session):
+    # Reset table
+    db_session.query(Order).delete()
+
+    # Creates orders and add to db
+    orders = []
+    for i in range(0, 16):
+        order = Order()
+        orders.append(order)
+        db_session.add(order)
+
+    # Commit changes
+    db_session.commit()
+
+    # Assert first page
+    response = orders_rpc.list_orders(1)
+    assert len(response) == 10
+    for i in range(0, 9):
+        assert response[i]['id'] == orders[i].id
+
+    # Assert second page
+    response = orders_rpc.list_orders(2)
+    for i in range(10, 16):
+        index = i - 10
+        assert response[index]['id'] == orders[i].id
+
+
+def test_list_orders_when_empty(orders_rpc, order, db_session):
+    db_session.query(Order).delete()
+    db_session.commit()
+    response = orders_rpc.list_orders(1)
+    assert len(response) == 0
+
 @pytest.mark.usefixtures('db_session')
 def test_can_create_order(orders_service, orders_rpc):
     order_details = [

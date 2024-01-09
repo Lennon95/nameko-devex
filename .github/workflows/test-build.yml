@@ -1,0 +1,29 @@
+name: "Run smoke tests"
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  smoke-test:
+    name: Smoke-test
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+ 
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: nameko-devex
+          environment-file: environment_dev.yml
+          python-version: 3.7
+          auto-update-conda: true
+
+      - name: Run backing services
+        run: ./dev_run_backingsvcs.sh
+
+      - name: Run nameko services
+        run: ./dev_run.sh gateway.service orders.service products.service
+
+      - name: Run smoke test
+        run: ./test/nex-smoketest.sh local
+

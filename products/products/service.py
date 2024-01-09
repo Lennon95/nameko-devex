@@ -30,6 +30,19 @@ class ProductsService:
         product = schemas.Product(strict=True).load(product).data
         self.storage.create(product)
 
+    @rpc
+    def update(self, product_id, product):
+        product = schemas.UpdateProduct(strict=True).load(product).data
+        self.storage.update(product_id, product)
+
+    @rpc
+    def delete(self, product_id):
+        self.storage.delete(product_id)
+
+    @rpc
+    def exists(self, product_id):
+        return self.storage.exists(product_id)
+
     @event_handler('orders', 'order_created')
     def handle_order_created(self, payload):
         for product in payload['order']['order_details']:

@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 
 from marshmallow import ValidationError
 from nameko import config
@@ -7,8 +8,8 @@ from nameko.rpc import RpcProxy
 from werkzeug import Response
 
 from gateway.entrypoints import http
-from gateway.exceptions import OrderNotFound, ProductNotFound
-from gateway.schemas import CreateOrderSchema, GetOrderSchema, ProductSchema
+from gateway.exceptions import OrderNotFound, ProductNotFound, ProductExists
+from gateway.schemas import CreateOrderSchema, GetOrderSchema, CreateProductSchema, UpdateProductSchema
 
 
 class GatewayService(object):
@@ -30,13 +31,14 @@ class GatewayService(object):
         """
         product = self.products_rpc.get(product_id)
         return Response(
-            ProductSchema().dumps(product).data,
+            CreateProductSchema().dumps(product).data,
+            status=HTTPStatus.OK,
             mimetype='application/json'
         )
 
     @http(
         "POST", "/products",
-        expected_exceptions=(ValidationError, BadRequest)
+        expected_exceptions=(ValidationError, BadRequest, ProductExists)
     )
     def create_product(self, request):
         """Create a new product - product data is posted as json
@@ -56,9 +58,11 @@ class GatewayService(object):
 
             {"id": "the_odyssey"}
 
+        Throws ProductExists exception when product ID already exists
+
         """
 
-        schema = ProductSchema(strict=True)
+        schema = CreateProductSchema(strict=True)
 
         try:
             # load input data through a schema (for validation)
@@ -71,7 +75,68 @@ class GatewayService(object):
         # Create the product
         self.products_rpc.create(product_data)
         return Response(
-            json.dumps({'id': product_data['id']}), mimetype='application/json'
+            json.dumps({'id': product_data['id']}),
+            status=HTTPStatus.CREATED,
+            mimetype='application/json'
+        )
+
+    @http(
+        "PATCH", "/products/<string:product_id>",
+        expected_exceptions=(ValidationError, BadRequest, ProductNotFound)
+    )
+    def update_product(self, request, product_id):
+        """Updates an existing product - product data is posted as json
+
+        Example request ::
+
+            {
+                "id": "the_odyssey",
+                "title": "The New Odyssey"
+            }
+
+
+        The response contains the updated product ID in a json document ::
+
+            {"id": "the_odyssey"}
+
+        Throws ProductNotFound exception when product doesn't exists
+
+        """
+
+        schema = UpdateProductSchema(strict=True)
+
+        try:
+            # load input data through a schema (for validation)
+            # Note - this may raise `ValueError` for invalid json,
+            # or `ValidationError` if data is invalid.
+            # Note that not all fields are required, only those
+            # that we want to update
+            product_data = schema.loads(request.get_data(as_text=True)).data
+        except ValueError as exc:
+            raise BadRequest("Invalid json: {}".format(exc))
+
+        # Updates the product
+        self.products_rpc.update(product_id, product_data)
+        return Response(
+            json.dumps({'id': product_id}),
+            status=HTTPStatus.OK,
+            mimetype='application/json'
+        )
+
+    @http(
+        "DELETE", "/products/<string:product_id>",
+        expected_exceptions=ProductNotFound
+    )
+    def delete_product(self, request, product_id):
+        """Deletes product by `product_id`
+        """
+
+        self.products_rpc.delete(product_id)
+
+        return Response(
+            json.dumps({'deleted_id': product_id}),
+            status=HTTPStatus.OK,
+            mimetype='application/json'
         )
 
     @http("GET", "/orders/<int:order_id>", expected_exceptions=OrderNotFound)
@@ -84,6 +149,7 @@ class GatewayService(object):
         order = self._get_order(order_id)
         return Response(
             GetOrderSchema().dumps(order).data,
+            status=HTTPStatus.OK,
             mimetype='application/json'
         )
 
@@ -93,9 +159,6 @@ class GatewayService(object):
         # raise``OrderNotFound``
         order = self.orders_rpc.get_order(order_id)
 
-        # Retrieve all products from the products service
-        product_map = {prod['id']: prod for prod in self.products_rpc.list()}
-
         # get the configured image root
         image_root = config['PRODUCT_IMAGE_ROOT']
 
@@ -103,11 +166,28 @@ class GatewayService(object):
         for item in order['order_details']:
             product_id = item['product_id']
 
-            item['product'] = product_map[product_id]
+            # Fetch product from storage
+            item['product'] = self.products_rpc.get(product_id)
             # Construct an image url.
             item['image'] = '{}/{}.jpg'.format(image_root, product_id)
 
         return order
+
+    @http("GET", "/orders/all")
+    def list_orders(self, request):
+        """Gets all orders.
+        """
+
+        # For pagination
+        page = int(request.args.get('p', 1))
+        per_page = int(request.args.get('per_page', 10))
+
+        orders = self.orders_rpc.list_orders(page, per_page)
+        return Response(
+            GetOrderSchema(many=True).dumps(orders).data,
+            status=HTTPStatus.OK,
+            mimetype='application/json'
+        )
 
     @http(
         "POST", "/orders",
@@ -153,13 +233,15 @@ class GatewayService(object):
         # Create the order
         # Note - this may raise `ProductNotFound`
         id_ = self._create_order(order_data)
-        return Response(json.dumps({'id': id_}), mimetype='application/json')
+        return Response(
+            json.dumps({'id': id_}),
+            status=HTTPStatus.CREATED,
+            mimetype='application/json')
 
     def _create_order(self, order_data):
         # check order product ids are valid
-        valid_product_ids = {prod['id'] for prod in self.products_rpc.list()}
         for item in order_data['order_details']:
-            if item['product_id'] not in valid_product_ids:
+            if not self.products_rpc.exists(item['product_id']):
                 raise ProductNotFound(
                     "Product Id {}".format(item['product_id'])
                 )
